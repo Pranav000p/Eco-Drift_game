@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Echo Drift — Tunnel Combat</title>
+    <meta name="description" content="A high-speed tunnel shooter where you pilot a spaceship through an infinite tunnel, dodge obstacles, and blast enemy ships with echo sound waves." />
+    <meta name="theme-color" content="#03050a" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/src/theme.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- 3D WebGL Canvas Layer -->
+      <canvas id="webgl-canvas"></canvas>
+
+      <!-- 2D HUD Canvas Layer -->
+      <canvas id="hud-canvas"></canvas>
+
+      <!-- Top Utility Bar (Fullscreen & Leaderboard) -->
+      <header class="top-utility-bar">
+        <button id="btn-top-leaderboard" class="btn-icon-top" title="Global Leaderboard" aria-label="Global Leaderboard">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H7"></path>
+            <path d="M14 14.66V17c0 .55.45 1 1 1h2"></path>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+          </svg>
+        </button>
+        <button id="btn-fullscreen" class="btn-icon-top" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+          <svg class="icon-expand" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+          <svg class="icon-compress" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+          </svg>
+        </button>
+      </header>
+
+      <!-- On-Screen Touch Controls (shown on touch devices / phones during gameplay) -->
+      <div id="touch-controls" class="touch-controls hidden">
+        <!-- Left Thumbstick Zone -->
+        <div id="touch-joystick-zone" class="touch-zone touch-zone-left">
+          <div id="touch-joystick-base" class="joystick-base">
+            <div id="touch-joystick-handle" class="joystick-handle">
+              <div class="handle-inner"></div>
+            </div>
+            <div class="joystick-ring-glow"></div>
+          </div>
+          <div class="touch-hint-label">STEER</div>
+        </div>
+
+        <!-- Right Fire Button Zone -->
+        <div id="touch-fire-zone" class="touch-zone touch-zone-right">
+          <button id="touch-btn-fire" class="touch-fire-btn" aria-label="Fire Echo Wave">
+            <div class="fire-btn-bg"></div>
+            <svg class="fire-icon-svg" viewBox="0 0 100 100" fill="none">
+              <circle cx="50" cy="50" r="15" stroke="currentColor" stroke-width="4" />
+              <path d="M 50 20 A 30 30 0 0 1 80 50" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+              <path d="M 50 80 A 30 30 0 0 1 20 50" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+              <path d="M 50 6 A 44 44 0 0 1 94 50" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+              <path d="M 50 94 A 44 44 0 0 1 6 50" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.6" />
+            </svg>
+            <span class="fire-btn-text">ECHO WAVE</span>
+            <div class="fire-btn-ring"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- UI Overlays -->
+      <div id="ui-container">
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen active">
+          <div class="brand">
+            <div class="echo-rings">
+              <div class="echo-ring ring-1"></div>
+              <div class="echo-ring ring-2"></div>
+              <div class="echo-ring ring-3"></div>
+            </div>
+            <h1 class="game-title" data-text="ECHO DRIFT">ECHO DRIFT</h1>
+            <p class="subtitle">TUNNEL COMBAT PROTOCOL</p>
+          </div>
+
+          <!-- Pilot Callsign Bar -->
+          <div class="pilot-callsign-bar">
+            <span class="callsign-tag">CALLSIGN:</span>
+            <input id="pilot-name-input" type="text" class="callsign-input" maxlength="15" placeholder="PILOT CALLSIGN" spellcheck="false" autocomplete="off" />
+            <span class="callsign-hint">TAP TO EDIT</span>
+          </div>
+
+          <div class="mode-selector">
+            <button id="btn-start" class="btn btn-primary">
+              <span class="btn-glow"></span>
+              <span class="btn-icon">▶</span>
+              <span class="btn-text">LAUNCH MISSION</span>
+            </button>
+            <button id="btn-open-leaderboard" class="btn btn-secondary">
+              <span class="btn-icon">🏆</span>
+              <span class="btn-text">GLOBAL LEADERBOARD</span>
+            </button>
+          </div>
+
+          <div class="instructions-card">
+            <div class="instruction-item">
+              <span id="hint-steer" class="key">[ W/A/S/D ] or [ ARROWS ]</span>
+              <span class="desc">NAVIGATE TUNNEL</span>
+            </div>
+            <div class="instruction-item">
+              <span id="hint-fire" class="key">[ SPACE ] or [ CLICK ]</span>
+              <span class="desc">FIRE ECHO WAVE</span>
+            </div>
+            <div class="instruction-item">
+              <span class="key">[ SURVIVE ]</span>
+              <span class="desc">DODGE RED BALLS &amp; OBSTACLES</span>
+            </div>
+            <div class="instruction-item">
+              <span class="key">[ REFILL CORE ]</span>
+              <span class="desc">COLLECT FOR +3 AMMO &amp; SURGE</span>
+            </div>
+          </div>
+
+          <div class="menu-footer">
+            <button id="btn-audio-toggle" class="btn-text-link">AUDIO: <span id="audio-status-label">ENABLED</span></button>
+          </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="screen hidden">
+          <div class="endcard-container">
+            <div class="endcard-header">
+              <span class="alert-status">SIGNAL LOST</span>
+              <h2 id="end-score-display">0</h2>
+              <span class="end-score-label">FINAL SCORE</span>
+              <div id="end-rank-banner" class="rank-banner hidden">
+                <span class="rank-trophy">🏆</span>
+                <span id="end-rank-text" class="rank-text">GLOBAL RANK: #1</span>
+              </div>
+            </div>
+
+            <div class="endcard-metrics">
+              <div class="metric-box">
+                <span class="metric-label">DISTANCE</span>
+                <span id="end-distance" class="metric-val">0.0 m</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">TIME SURVIVED</span>
+                <span id="end-time" class="metric-val">00:00</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">ENEMIES DESTROYED</span>
+                <span id="end-enemies" class="metric-val">0</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">BALLS DODGED</span>
+                <span id="end-dodges" class="metric-val">0</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">ECHO WAVES FIRED</span>
+                <span id="end-waves" class="metric-val">0</span>
+              </div>
+            </div>
+
+            <div class="endcard-actions">
+              <button id="btn-retry" class="btn btn-primary">
+                <span class="btn-text">RE-ENTER TUNNEL</span>
+              </button>
+              <div class="endcard-sub-actions">
+                <button id="btn-gameover-leaderboard" class="btn btn-secondary">
+                  <span class="btn-text">🏆 LEADERBOARD</span>
+                </button>
+                <button id="btn-return-menu" class="btn btn-secondary">
+                  <span class="btn-text">RETURN TO BASE</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Leaderboard Modal Dialog -->
+        <div id="leaderboard-modal" class="modal-backdrop hidden">
+          <div class="leaderboard-card">
+            <div class="leaderboard-header">
+              <div class="leaderboard-title-group">
+                <div class="leaderboard-badge">GLOBAL MAINFRAME ARCHIVE</div>
+                <h2 class="leaderboard-title">HALL OF DRIFTERS</h2>
+                <span id="leaderboard-total-count" class="leaderboard-subtitle">SYNCING PILOTS...</span>
+              </div>
+              <button id="btn-leaderboard-close" class="modal-close-btn" aria-label="Close Leaderboard">✕</button>
+            </div>
+
+            <!-- Sort Toolbar -->
+            <div class="leaderboard-toolbar">
+              <div class="leaderboard-tabs">
+                <button id="tab-sort-best" class="tab-btn active" title="Show highest scores first">
+                  <span class="tab-icon">★</span>
+                  <span>BEST SCORERS</span>
+                </button>
+                <button id="tab-sort-worst" class="tab-btn" title="Show lowest scores first">
+                  <span class="tab-icon">⚡</span>
+                  <span>WORST TO BEST</span>
+                </button>
+              </div>
+              <button id="btn-leaderboard-refresh" class="btn-text-link refresh-btn">
+                <span class="refresh-icon">↻</span> REFRESH
+              </button>
+            </div>
+
+            <!-- Table Header -->
+            <div class="leaderboard-table-header">
+              <span class="th-rank">RANK</span>
+              <span class="th-pilot">PILOT CALLSIGN</span>
+              <span class="th-score">SCORE / DIST</span>
+              <span class="th-combat">COMBAT</span>
+              <span class="th-time">SURVIVED</span>
+            </div>
+
+            <!-- Scrollable List Container -->
+            <div id="leaderboard-list" class="leaderboard-list">
+              <!-- Dynamically populated rows -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
